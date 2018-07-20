@@ -1,18 +1,5 @@
 package main
 
-import (
-	"encoding/csv"
-	"fmt"
-	"io"
-	"log"
-	"net"
-	"os"
-	"strings"
-	"time"
-
-	"github.com/rdmc/mac"
-)
-
 // "Start Time","End Time","IP Address","Gateway","HW Address","Client ID","Acti                                                                                 on",
 // "Host Sent","Host Received","A DNS Update","Protocol","Circuit ID","Remote ID                                                                                 ",
 // "Vendor Class ID","DOCSIS DeviceClass","Vendor-Specific Data","Interface ID"
@@ -89,6 +76,8 @@ ip classifier: 11
 	"10.212" = 87115
 
 */
+
+/*
 
 type AuditString struct {
 	StartTime          string
@@ -177,6 +166,7 @@ func PrintStats() {
 	}
 
 }
+*/
 
 /*
 action
@@ -186,6 +176,7 @@ vendorClassID
 interfaceID
 */
 
+/*
 // Audit represents a logged dhcp operation.
 // from Incognito BCC 6.x
 type Audit struct {
@@ -388,3 +379,4 @@ func main() {
 	PrintStats()
 
 }
+*/
