@@ -12,7 +12,7 @@ import (
 
 	"github.com/pkg/profile"
 
-	"./mac"
+	"github.com/rdmc/mac"
 )
 
 // "Start Time","End Time","IP Address","Gateway","HW Address","Client ID","Acti                                                                                 on",
