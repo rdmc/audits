@@ -21,27 +21,6 @@ import (
 
 // header "Start Time" .....
 
-// AuditString struct blabla
-type AuditString struct {
-	StartTime          string
-	EndTime            string
-	IPAddress          string
-	Gateway            string
-	HWAddress          string
-	ClientID           string
-	Action             string
-	HostSent           string
-	HostReceived       string
-	ADNSUpdate         string
-	Protocol           string
-	CircuitID          string
-	RemoteID           string
-	VendorClassID      string
-	DOCSISDeviceClass  string
-	VendorSpecificData string
-	InterfaceID        string
-}
-
 //Global var stats, MUST reformat later
 var stats struct {
 	header        int
@@ -281,27 +260,138 @@ func ParseAuditRecord(r []string) (*Audit, error) {
 	return a, nil
 }
 
-// String2 blabla bla
-func (a *AuditString) String2() string {
-	s := " StartTime: " + a.StartTime
-	s += ", EndTime: " + a.EndTime
-	s += ", IPAddress: " + a.IPAddress
-	s += ", Gateway: " + a.Gateway
-	s += ", HWAddress: " + a.HWAddress
-	s += ", ClientID: " + a.ClientID
-	s += ", Action: " + a.Action
-	s += ", HostSent: " + a.HostSent
-	s += ", HostReceived: " + a.HostReceived
-	s += ", ADNSUpdate: " + a.ADNSUpdate
-	s += ", Protocol: " + a.Protocol
-	s += ", CircuitID: " + a.CircuitID
-	s += ", RemoteID: " + a.RemoteID
-	s += ", VendorClassID: " + fmt.Sprintf("%0.32s", a.VendorClassID)
-	s += ", DOCSISDeviceClass: " + fmt.Sprintf("%0.32s", a.DOCSISDeviceClass)
-	s += ", VendorSpecificData: " + fmt.Sprintf("%0.32s", a.VendorSpecificData)
-	s += ", InterfaceID: " + a.InterfaceID
+/*
+func parseBCCAuditRecord(s bufio.Scanner) {
+	return scanner.Err()
+}
+*/
+func parseBccAuditFile(fname string) (err error) {
 
-	return strings.Replace(s, ",", "\n", -1)
+	var buf []byte
+	var sbuf string
+	var fieldCnt int
+	var record []byte
+	lin := 0
+	record = make([]byte, fieldsPerLine)
+	_ = record
+
+	fieldIndexes := make([]int, fieldsPerLine, fieldsPerLine)
+
+	file, err := os.Open(fname)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+scanner_looop:
+	for scanner.Scan() {
+
+		buf = scanner.Bytes()
+		sbuf = string(buf)
+
+		if len(buf) != len(sbuf) {
+			fmt.Println("len []bytes != len string.", len(buf), len(sbuf))
+		}
+
+		if len(buf) != utf8.RuneCountInString(sbuf) {
+			fmt.Println("len []bytes != len string.", len(buf), utf8.RuneCountInString(sbuf))
+		}
+
+		// ===========================================================================
+		lin++
+		state := fieldStart
+		fieldCnt = 0
+
+		//line_loop:
+		for i, c := range buf {
+
+			if state == fieldStart {
+				if c == quote {
+					state = fieldCore
+					continue
+				} else {
+					fmt.Printf("Error at line %d, col %d:  expected %q, got %q\n.", lin, i, quote, c)
+					// increment error starts ....
+					continue scanner_looop
+				}
+			}
+			if state == fieldEnd {
+				if c == comma {
+					state = fieldStart
+				} else {
+					// backtrack, to handle a '"' at the midle of a field
+					state = fieldCore
+					fieldCnt--
+				}
+			}
+			if state == fieldCore {
+				if c == quote {
+					state = fieldEnd
+					fieldIndexes[fieldCnt] = i
+					fieldCnt++
+					if fieldCnt > fieldsPerLine {
+						fmt.Printf("Error at line %d, col %d: to many fields in this line.\n", lin, i)
+						// incremnet error starts ....
+						continue scanner_looop
+					}
+
+				}
+			}
+
+		}
+
+		/*
+		*
+		 */
+
+		if fieldCnt != fieldsPerLine {
+			stats.errors++
+			fmt.Printf("Error line %d, have %d fields, lines must have exacly %d\n.", lin, fieldCnt, fieldsPerLine)
+			return fmt.Errorf("line must have exactly 17 itens")
+		}
+
+		a := &Audit{}
+
+		//fmt.Println(string(buf[1:fieldIndexes[0]]))
+
+		if string(buf[1:fieldIndexes[0]]) == headerMark { // "Start Time"
+			stats.header++
+			continue scanner_looop
+		}
+
+		a.StartTime, err = time.Parse(timeFormat, string(buf[1:fieldIndexes[0]]))
+		if err != nil {
+			log.Println("[StartTime]error", err)
+			stats.errors++
+		}
+
+		_ = a
+
+		//fmt.Println(audit.String())
+		//fmt.Println("======================================================================================")
+
+		// ==============================================================================================
+		/*
+				fmt.Printf("line=%v\n", string(buf))
+				fmt.Printf("Linecnt=%d, fieldCnt=%d, indexes=%v\n", lin, fieldCnt, fieldIndexes)
+
+				li := 1
+				for i, v := range fieldIndexes {
+					fmt.Printf("field: %2d: %q\n", i, string(buf[li:v]))
+					li = v + 3
+				}
+			*
+				/*
+					if lin > 6 {
+						break scanner_looop
+					}
+		*/
+	}
+	fmt.Println("total lines:", lin)
+	return scanner.Err()
+
 }
 
 /*
@@ -425,7 +515,7 @@ scanner_looop:
 		audit, _ := ParseAuditRecord(r)
 		_ = audit
 
-		fmt.Println(audit.String())
+		//fmt.Println(audit.String())
 		//fmt.Println("======================================================================================")
 
 		// ==============================================================================================
@@ -452,7 +542,7 @@ scanner_looop:
 
 func main() {
 
-	defer profile.Start().Stop()
+	defer profile.Start(profile.MemProfile).Stop()
 
 	for _, arg := range os.Args[1:] {
 		/*	if i == 0 {
