@@ -19,6 +19,38 @@ import (
 
 // header "Start Time" .....
 
+/*
+action
+protocol
+remoteID
+vendorClassID
+interfaceID
+*/
+
+// Audit represents a logged dhcp operation.
+// from Incognito BCC 6.x
+type Audit struct {
+	StartTime time.Time
+	EndTime   time.Time
+	DeltaTime time.Duration
+	IPAddress net.IP
+	Gateway   net.IP
+	//HWAddress          string
+	HWAddress          mac.MAC
+	ClientID           string
+	Action             string // uint8
+	HostSent           string
+	HostReceived       string
+	ADNSUpdate         string // uint8 or bool
+	Protocol           string // uint8
+	CircuitID          string
+	RemoteID           mac.MAC
+	VendorClassID      string // uint8
+	DOCSISDeviceClass  string
+	VendorSpecificData string
+	InterfaceID        string
+}
+
 //Global var stats, MUST reformat later
 var stats struct {
 	header        int
@@ -98,38 +130,6 @@ func PrintStats() {
 	for k, v := range stats.ipClassifier {
 		fmt.Printf("\t%q = %d\n", k, v)
 	}
-}
-
-/*
-action
-protocol
-remoteID
-vendorClassID
-interfaceID
-*/
-
-// Audit represents a logged dhcp operation.
-// from Incognito BCC 6.x
-type Audit struct {
-	StartTime time.Time
-	EndTime   time.Time
-	DeltaTime time.Duration
-	IPAddress net.IP
-	Gateway   net.IP
-	//HWAddress          string
-	HWAddress          mac.MAC
-	ClientID           string
-	Action             string // uint8
-	HostSent           string
-	HostReceived       string
-	ADNSUpdate         string // uint8 or bool
-	Protocol           string // uint8
-	CircuitID          string
-	RemoteID           mac.MAC
-	VendorClassID      string // uint8
-	DOCSISDeviceClass  string
-	VendorSpecificData string
-	InterfaceID        string
 }
 
 func (a *Audit) String() string {
