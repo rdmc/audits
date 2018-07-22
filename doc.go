@@ -1,11 +1,82 @@
 package main
 
+/*
+===========================================================
+#### Stats
+
+action: 10
+	"Offered" = 575734
+	"Released" = 13793
+	"Active" = 49625
+	"Lease Expired" = 47181
+	"NAK:No Record of the lease" = 99
+	"Forced" = 4357
+	"Renewal" = 295084
+	"Offer expired" = 4760
+	"NAK:Not Renewable" = 23146
+	"Failover conflict" = 852
+aDNSUpdate: 1
+	"Successful" = 1014631
+protocol: 2
+	"DHCPV4" = 1013268
+	"BOOTP" = 1363
+vendorClassId: 37
+	"docsis3.0" = 29302
+	"dhcpcd-5.2.10" = 2
+	"docsis2.0" = 97423
+	"'nosstb'" = 485
+	"nosstb" = 18
+	"udhcp 1.12.1" = 12
+	"Vigor2820 series" = 3
+	"MSFT 98" = 8
+	"50" = 39
+	"RV082" = 6
+	"huawei AR1220" = 21
+	"OpenTV" = 9891
+	"MSFT 5.0" = 1314
+	"dslforum.org" = 38
+	"Vigor2925" = 10
+	"nds" = 44227
+	"" = 1129922
+	"udhcp 0.9.8" = 107
+	"dhcpcd-5.5.6" = 100
+	"fon_test" = 104193
+	"BR32L" = 22
+	"pktc1.5" = 611676
+	"Vigor2820" = 5
+	"udhcp 1.20.2" = 4
+	"dhcpcd-6.10.0" = 3
+	"udhcp 1.24.2" = 2
+	"udhcp 0.9.9-pre" = 283
+	"udhcp 1.11.2" = 8
+	"udhcp 1.11.1" = 5
+	"ciscopnp" = 3
+	"4d" = 41
+	"udhcp 0.9.7" = 5
+	"AirStation Series BUFFALO INC." = 8
+	"Vigor2110n" = 6
+	"udhcp 1.15.2" = 2
+	"Vigor2820n" = 3
+	"udhcp 1.17.4" = 65
+InterfaceID: 0
+ip classifier: 11
+	"10.213" = 39558
+	"10.98" = 601000
+	"128.65" = 30028
+	"10.156" = 52
+	"172.16" = 54308
+	"100.82" = 28550
+	"78.29" = 78110
+	"81.20" = 14843
+	"0.0" = 23245
+	"192.168" = 57822
+	"10.212" = 87115
+
+*/
+
 // doc doc doc
 /*
-81.20.240.0
-81.20.244.0
-81.20.248.0
-81.20.252.0
+
 
 
 
