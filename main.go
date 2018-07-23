@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-	defer profile.Start(profile.MemProfile).Stop()
+	defer profile.Start().Stop()
 
 	for _, arg := range os.Args[1:] {
 		/*	if i == 0 {
