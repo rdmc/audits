@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/rdmc/mac"
 )
@@ -28,9 +27,9 @@ vendorClassID
 interfaceID
 */
 
-// Audit represents a logged dhcp operation.
+// AuditRecord represents a logged dhcp operation.
 // from Incognito BCC 6.x
-type Audit struct {
+type AuditRecord struct {
 	StartTime          time.Time
 	EndTime            time.Time
 	DeltaTime          time.Duration
@@ -133,7 +132,7 @@ func PrintStats() {
 	}
 }
 
-func (a *Audit) String() string {
+func (a *AuditRecord) String() string {
 	s := " StartTime: " + a.StartTime.String()
 	s += ", EndTime: " + a.EndTime.String()
 	s += ", DeltaTime: " + a.DeltaTime.String()
@@ -156,12 +155,12 @@ func (a *Audit) String() string {
 	return strings.Replace(s, ",", "\n", -1)
 }
 
-// ParseAuditRecord make a Audit struct from an alices of strings
-func ParseAuditRecord(r []string) (*Audit, error) {
+// ParseAuditRecord make a Audit struct from an a slice of strings
+func ParseAuditRecord(r []string) (*AuditRecord, error) {
 	const timeFormat = "Mon Jan 2 15:04:05 2006"
 	var err error
 
-	a := &Audit{}
+	a := &AuditRecord{}
 
 	if len(r) != 17 {
 		stats.errors++
@@ -256,48 +255,50 @@ func ParseAuditRecord(r []string) (*Audit, error) {
 // A ParseError is returnned for parsing errors
 type ParseError struct {
 	Line   int // Line where error occurred, 1-indexed
-	Column int // Colum (rune index) where the error occurred, 0-indexed
+	Column int // Colum (bytew index) where the error occurred, 0-indexed
 	//Char	rune    // Character where the error occurred.
 	Err error // The actual Error.
 }
 
 func (e *ParseError) Error() string {
 	if e.Err == ErrFieldCount {
-		return fmt.Sprintf("record on line %d: %v, e.Line, e.Err")
+		return fmt.Sprintf("record on line %d: %v", e.Line, e.Err)
 	}
-	return fmt.Sprintf("parse error on line %d, column &d: %v")
+	return fmt.Sprintf("parse error on line %d, column %d: %v", e.Line, e.Column, e.Err)
 }
 
 // These are the error that can be returned im ParseError.Err.
 var (
-	ErrQuote      = error.New("expected a \"")
+	ErrQuote      = errors.New("expected a \"")
 	ErrFieldCount = errors.New("wrong number of fields")
+	//ErrFieldCount = errors.New("wrong number of fields")
 )
 
+// AuditFileReader holds information needed for parsing audit records in the audit file.
 type AuditFileReader struct {
 	//fname string
-	s *bufio.Scanner
-	//
+	s            *bufio.Scanner
 	buf          []byte
 	fieldIndexes []int
-	//scanner
-	numLine int
-	//
+	numLine      int
+	fields       []string
 	// stats
 	errors   int
 	headers  int
 	linesCnt int
 }
 
-func NewAuditFileReader(scanner *bufio.Scanner) *AuditFileReader {
+func newAuditFileReader(scanner *bufio.Scanner) *AuditFileReader {
 	return &AuditFileReader{
 		//fname:        filename,
 		s:            scanner,
 		buf:          make([]byte, 1024),
 		fieldIndexes: make([]int, FieldsPerRecord, FieldsPerRecord),
+		fields:       make([]string, FieldsPerRecord, FieldsPerRecord),
 	}
 }
 
+//iterate all lines on audit file
 func processAuditFile(filename string) (err error) {
 
 	f, err := os.Open(filename)
@@ -307,224 +308,97 @@ func processAuditFile(filename string) (err error) {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
-	af := NewAuditFileReader(scanner)
+	r := newAuditFileReader(scanner)
 
-	//for af.s.Scan() {
-	for af.s.Scan() {
-		af.parseAuditRecord()
+	for r.s.Scan() {
+		rec, err := r.splitAuditRecordFields()
+		if err != nil {
+			log.Println("ERROR:", err)
+		}
+		ar, err := ParseAuditRecord(rec)
+		if err != nil {
+			log.Println("ERROR:", err)
+		}
+		_ = ar
+		_ = rec
+		_ = err
 
 	}
+	fmt.Println("==================")
+	fmt.Println("lin: ", r.linesCnt, ", err:", r.errors)
 
-	return nil
-
+	return r.s.Err() // Scanner.err()
 }
 
-func (af *AuditFileReader) parseAuditRecord() (err error) {
-	err = af.s.Err()
-	return err
-}
+func (r *AuditFileReader) splitAuditRecordFields() (rec []string, err error) {
 
-func parseBccAuditFile2(fname string) error {
+	// Read line
+	r.buf = r.s.Bytes()
+	r.linesCnt++
+	state := fieldStart
+	fieldCnt := 0
 
-	var buf []byte
-	var sbuf string
-	var fieldCnt int
-	var record []byte
-	lin := 0
-	record = make([]byte, fieldsPerLine)
-	_ = record
+	// a very simple finit state machine, split the fields od  a audit record
+	// all fields are inside double quotes, separated by a comma, with no whitespaces,
+	// like: "field1","fielde2",...,"field17"
+	for i, c := range r.buf {
+		switch state {
+		case fieldStart:
+			if c == quote {
+				state = fieldCore
+				continue
+			} else {
+				r.errors++
+				err = &ParseError{Line: r.linesCnt, Column: i, Err: ErrQuote}
+				return nil, err
+			}
+		case fieldEnd:
+			if c == comma {
+				state = fieldStart
+			} else {
+				// backtrack, to handle a '"' in the midle of a field.
+				state = fieldCore
+				fieldCnt--
+			}
+			fallthrough
+		case fieldCore:
+			if c == quote {
+				state = fieldEnd
+				r.fieldIndexes[fieldCnt] = i
+				fieldCnt++
+				if fieldCnt > FieldsPerRecord {
+					r.errors++
+					err = &ParseError{Line: r.linesCnt, Column: i, Err: ErrFieldCount}
+					return nil, err
+				}
+				//case default:
+				//  never reached
+			}
+		}
 
-	fieldIndexes := make([]int, fieldsPerLine, fieldsPerLine)
-
-	file, err := os.Open(fname)
-	if err != nil {
-		log.Fatal(err)
 	}
-	defer file.Close()
+	if fieldCnt != FieldsPerRecord {
+		r.errors++
+		err = &ParseError{Line: r.linesCnt, Column: 0, Err: ErrFieldCount}
+		return nil, err
+	}
 
-	scanner := bufio.NewScanner(file)
-
-scanner_looop:
-	for scanner.Scan() {
-
-		//===============================================
-		buf = scanner.Bytes()
-		sbuf = string(buf)
-
-		if len(buf) != len(sbuf) {
-			fmt.Println("len []bytes != len string.", len(buf), len(sbuf))
-		}
-
-		if len(buf) != utf8.RuneCountInString(sbuf) {
-			fmt.Println("len []bytes != len string.", len(buf), utf8.RuneCountInString(sbuf))
-		}
-
-		lin++
-		state := fieldStart
-		fieldCnt = 0
-
-		//line_loop:
-		for i, c := range buf {
-
-			if state == fieldStart {
-				if c == quote {
-					state = fieldCore
-					continue
-				} else {
-					fmt.Printf("Error at line %d, col %d:  expected %q, got %q\n.", lin, i, quote, c)
-					// increment error starts ....
-					continue scanner_looop
-				}
-			}
-			if state == fieldEnd {
-				if c == comma {
-					state = fieldStart
-				} else {
-					// backtrack, to handle a '"' at the midle of a field
-					state = fieldCore
-					fieldCnt--
-				}
-			}
-			if state == fieldCore {
-				if c == quote {
-					state = fieldEnd
-					fieldIndexes[fieldCnt] = i
-					fieldCnt++
-					if fieldCnt > fieldsPerLine {
-						fmt.Printf("Error at line %d, col %d: to many fields in this line.\n", lin, i)
-						// incremnet error starts ....
-						continue scanner_looop
-					}
-
-				}
-			}
-
-		}
-
-		if fieldCnt != fieldsPerLine {
-			stats.errors++
-			fmt.Printf("Error line %d, have %d fields, lines must have exacly %d\n.", lin, fieldCnt, fieldsPerLine)
-			return fmt.Errorf("line must have exactly 17 itens")
-		}
-
-		// create a slices of strings r,[]string, to be consumed by func parseAuditRecord..
-		var r []string
-		li := 1
-		for _, v := range fieldIndexes {
-			f := string(buf[li:v])
+	//var rec []string
+	/*	li := 1
+		for _, v := range r.fieldIndexes {
+			field := string(r.buf[li:v])
 			li = v + 3
-			r = append(r, f)
+			rec = append(rec, field)
 		}
-
-		//a := &Audit{}
-		a, err := ParseAuditRecord(r)
-		_ = a
-
-		//========================================================
-
+	*/
+	//var rec []string
+	li := 1
+	for i, v := range r.fieldIndexes {
+		r.fields[i] = string(r.buf[li:v])
+		li = v + 3
+		//rec = append(rec, fields)
 	}
-	fmt.Println("total lines:", lin)
-	return scanner.Err()
 
-}
-
-func parseBccAuditFile(fname string) (err error) {
-
-	var buf []byte
-	var sbuf string
-	var fieldCnt int
-	var record []byte
-	lin := 0
-	record = make([]byte, fieldsPerLine)
-	_ = record
-
-	fieldIndexes := make([]int, fieldsPerLine, fieldsPerLine)
-
-	file, err := os.Open(fname)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-scanner_looop:
-	for scanner.Scan() {
-
-		buf = scanner.Bytes()
-		sbuf = string(buf)
-
-		if len(buf) != len(sbuf) {
-			fmt.Println("len []bytes != len string.", len(buf), len(sbuf))
-		}
-
-		if len(buf) != utf8.RuneCountInString(sbuf) {
-			fmt.Println("len []bytes != len string.", len(buf), utf8.RuneCountInString(sbuf))
-		}
-
-		lin++
-		state := fieldStart
-		fieldCnt = 0
-
-		//line_loop:
-		for i, c := range buf {
-
-			if state == fieldStart {
-				if c == quote {
-					state = fieldCore
-					continue
-				} else {
-					fmt.Printf("Error at line %d, col %d:  expected %q, got %q\n.", lin, i, quote, c)
-					// increment error starts ....
-					continue scanner_looop
-				}
-			}
-			if state == fieldEnd {
-				if c == comma {
-					state = fieldStart
-				} else {
-					// backtrack, to handle a '"' at the midle of a field
-					state = fieldCore
-					fieldCnt--
-				}
-			}
-			if state == fieldCore {
-				if c == quote {
-					state = fieldEnd
-					fieldIndexes[fieldCnt] = i
-					fieldCnt++
-					if fieldCnt > fieldsPerLine {
-						fmt.Printf("Error at line %d, col %d: to many fields in this line.\n", lin, i)
-						// incremnet error starts ....
-						continue scanner_looop
-					}
-
-				}
-			}
-
-		}
-
-		if fieldCnt != fieldsPerLine {
-			stats.errors++
-			fmt.Printf("Error line %d, have %d fields, lines must have exacly %d\n.", lin, fieldCnt, fieldsPerLine)
-			return fmt.Errorf("line must have exactly 17 itens")
-		}
-
-		// create a slices of strings r,[]string, to be consumed by func parseAuditRecord..
-		var r []string
-		li := 1
-		for _, v := range fieldIndexes {
-			f := string(buf[li:v])
-			li = v + 3
-			r = append(r, f)
-		}
-
-		a := &Audit{}
-		err = ParseAuditRecord(a, r)
-		_ = a
-
-	}
-	fmt.Println("total lines:", lin)
-	return scanner.Err()
-
+	//err = r.s.Err() // Scanner.Err()
+	return r.fields, nil
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
+	"log"
 	"net"
 )
 
@@ -35,6 +37,9 @@ type XXX        // as a List
 
 XXX_test.golang
 ver https://golang.org/src/container/list/list_test.go
+
+
+
 
 */
 
@@ -79,4 +84,21 @@ func int2ip(nn uint32) net.IP {
 	ip := make(net.IP, 4)
 	binary.BigEndian.PutUint32(ip, nn)
 	return ip
+}
+
+func generate1KNetworks(cidrNet string) {
+	//_, ipv4Net, err := net.ParseCIDR("78.29.128.0/18")
+	_, ipv4Net, err := net.ParseCIDR(cidrNet)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ms, _ := ipv4Net.Mask.Size()
+	ms = 22 - ms
+	if ms < 0 || ms > 6 {
+		log.Fatal("network must be a [/16  to /22]")
+	}
+	for i := 0; i < 1<<uint(ms); i++ {
+		fmt.Println("#", i, ", ip:", ipv4Net.IP, ", net:", ipv4Net)
+		ipv4Net.IP[2] = ipv4Net.IP[2] + 4
+	}
 }
