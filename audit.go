@@ -61,6 +61,8 @@ var stats struct {
 	ipClassifier  map[string]int
 	errors        int
 	cnt           int
+	pubIP         int
+	notPubIP      int
 }
 
 type state int
@@ -100,6 +102,9 @@ func PrintStats() {
 	fmt.Println("conter: ", stats.cnt)
 	fmt.Println("header: ", stats.header)
 	fmt.Println("errors: ", stats.errors)
+	//
+	fmt.Println("pub ip: ", stats.pubIP)
+	fmt.Println("private ip: ", stats.notPubIP)
 
 	fmt.Println("action:", len(stats.action))
 	for k, v := range stats.action {
@@ -169,7 +174,7 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 
 	if r[0] == "Start Time" {
 		stats.header++
-		return nil, nil // CHANGE-ME
+		return nil, fmt.Errorf("Header record") // CHANGE-ME
 	}
 
 	a.StartTime, err = time.Parse(timeFormat, r[0])
@@ -314,15 +319,29 @@ func processAuditFile(filename string) (err error) {
 		rec, err := r.splitAuditRecordFields()
 		if err != nil {
 			log.Println("ERROR:", err)
+			continue
 		}
 		ar, err := ParseAuditRecord(rec)
 		if err != nil {
 			log.Println("ERROR:", err)
+			continue
 		}
-		_ = ar
-		_ = rec
-		_ = err
 
+		ip := ip2int(ar.IPAddress)
+		node, ok := ippoll.getIPNode(ip)
+		if !ok {
+			stats.notPubIP++
+		} else {
+			stats.pubIP++
+			node.cnt++
+		}
+
+	}
+	node, ok := ippoll.getIPNode(ip2int(net.IPv4(81, 20, 244, 123)))
+	if ok {
+		fmt.Println("FOUND, name:", node.name, ", addr:", node.addr, ", counter:", node.cnt)
+	} else {
+		fmt.Println("NOT, FOUND")
 	}
 	fmt.Println("==================")
 	fmt.Println("lin: ", r.linesCnt, ", err:", r.errors)

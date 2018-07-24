@@ -42,12 +42,14 @@ ver https://golang.org/src/container/list/list_test.go
 
 
 */
+type IP = uint32
 
-type IP uint32 // ipv4 as a 32bit unsigned int
+//type IP uint32 // ipv4 as a 32bit unsigned int
 
 type IPNode struct {
 	name  string
 	addr  net.IP
+	cnt   int
 	cargo [256]byte // lastro para teste
 }
 
