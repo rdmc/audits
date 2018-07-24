@@ -62,6 +62,9 @@ type IPPoll struct {
 	cargo []byte
 }
 
+// main !!!
+var ippoll IPPoll
+
 func (ipp *IPPoll) getIPNode(ip IP) (*IPNode, bool) {
 	base := ip & 0xfffffc00
 	index := ip & 0x000003ff
@@ -98,7 +101,29 @@ func generate1KNetworks(cidrNet string) {
 		log.Fatal("network must be a [/16  to /22]")
 	}
 	for i := 0; i < 1<<uint(ms); i++ {
-		fmt.Println("#", i, ", ip:", ipv4Net.IP, ", net:", ipv4Net)
+		b := NewBlock1K(IP(ip2int(ipv4Net.IP)))
+		ippoll.m[IP(ip2int(ipv4Net.IP))] = b
+		fmt.Println("#", i, ", net:", ipv4Net.IP, "/22.")
 		ipv4Net.IP[2] = ipv4Net.IP[2] + 4
 	}
+}
+
+func NewBlock1K(net IP) *Block1K {
+	b := &Block1K{network: net}
+	for i := 0; i < 1024; i++ {
+		b.a[i].addr = int2ip(uint32(net) + uint32(i))
+		b.a[i].name = fmt.Sprintf("ip=%v, index=%d", int2ip(uint32(net)+uint32(i)), i)
+	}
+	return b
+}
+
+func init() {
+	fmt.Println("Initializing IP Pool memory...")
+	ippoll.m = make(map[IP]*Block1K, 30)
+	generate1KNetworks("81.20.240.0/20")
+	generate1KNetworks("78.29.128.0/18")
+	generate1KNetworks("128.65.224.0/19")
+	//generate1KNetworks("78.29.128.0/18")
+	//generate1KNetworks("78.29.128.0/18")
+
 }
