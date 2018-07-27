@@ -2,46 +2,15 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
+	"os"
 )
 
-/*
-// exemplo de um tipo
-// baseado em https://golang.org/pkg/container/list/
+const filename = "save.gob"
 
-
-type YYY        // as a Node/Element
- func (y *YYY) Next() *YYY
- func (y *YYY) Prev() *YYY
-
-type XXX        // as a List
-
-//???? The Zere value of XXX is am emply XXX readdy to use ????
-// define a reasonable Zero Value....
-
-  func New() *XXX       // New returns an initialized XXX.
-
- func(x *XXX) Back() *YYY
- func(x *XXX) Front() *YYY
-
- func(x *XXX) Init() *XXX // Init initializes or clears XXX x.
-
- func(x *XXX) Len() Init
-
-
- func(x *XXX) Insert(y *YYY) *YYY
- func(x *XXX) Remove(y *YYY) *YYY
-
-
-XXX_test.golang
-ver https://golang.org/src/container/list/list_test.go
-
-
-
-
-*/
 type IP = uint32
 
 //type IP uint32 // ipv4 as a 32bit unsigned int
@@ -58,16 +27,61 @@ type Block1K struct {
 	a       [1024]IPNode
 }
 
-type IPPoll struct {
+type IPPool struct {
 	//m     map[net.IP]*Block1K // net.IP canot be a key in a map... use a string or a UINT
 	m     map[IP]*Block1K
 	cargo []byte
 }
 
-// main !!!
-var ippoll IPPoll
+func NewBlock1K(net IP) *Block1K {
+	b := &Block1K{network: net}
+	for i := 0; i < 1024; i++ {
+		b.a[i].addr = int2ip(uint32(net) + uint32(i))
+		b.a[i].name = fmt.Sprintf("ip=%v, index=%d", int2ip(uint32(net)+uint32(i)), i)
+	}
+	return b
+}
 
-func (ipp *IPPoll) getIPNode(ip IP) (*IPNode, bool) {
+// main !!!
+var ippool IPPool
+
+func SaveIPPool() error {
+
+	f, err := os.Create(filename)
+	if err != nil {
+		log.Fatal("Error opening file", err)
+	}
+	defer f.Close()
+
+	enc := gob.NewEncoder(f)
+
+	if err := enc.Encode(&ippool); err != nil {
+		log.Fatal("Error encoding", err)
+	}
+
+	return nil
+}
+
+func ReadIPPool() error {
+
+	f, err := os.Open(filename)
+	if err != nil {
+		log.Fatal("Error opening file", err)
+	}
+	defer f.Close()
+
+	dec := gob.NewDecoder(f)
+
+	if err := dec.Decode(&ippool); err != nil {
+		log.Fatal("Error encoding", err)
+	}
+
+	return nil
+
+	return nil
+}
+
+func (ipp *IPPool) getIPNode(ip IP) (*IPNode, bool) {
 	base := ip & 0xfffffc00
 	index := ip & 0x000003ff
 	b1Kp, ok := ipp.m[base]
@@ -110,22 +124,13 @@ func generate1KNetworks(cidrNet string) {
 	}
 }
 
-func NewBlock1K(net IP) *Block1K {
-	b := &Block1K{network: net}
-	for i := 0; i < 1024; i++ {
-		b.a[i].addr = int2ip(uint32(net) + uint32(i))
-		b.a[i].name = fmt.Sprintf("ip=%v, index=%d", int2ip(uint32(net)+uint32(i)), i)
-	}
-	return b
-}
-
 func init() {
 	fmt.Println("Initializing IP Pool memory...")
-	ippoll.m = make(map[IP]*Block1K, 30)
+	ippo0l.m = make(map[IP]*Block1K, 30)
 	generate1KNetworks("81.20.240.0/20")
 	generate1KNetworks("78.29.128.0/18")
 	generate1KNetworks("128.65.224.0/19")
-	//generate1KNetworks("78.29.128.0/18")
-	//generate1KNetworks("78.29.128.0/18")
+	generate1KNetworks("185.218.12.0/22")
+	generate1KNetworks("185.224.164.0/22")
 
 }
