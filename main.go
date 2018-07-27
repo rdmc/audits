@@ -25,7 +25,7 @@ func main() {
 		_ = processAuditFile(arg)
 
 	}
-	PrintStats()
+	//PrintStats()
 	for k, v := range ippool.M {
 		fmt.Println(k, v.A[123].Name, v.A[123].Cnt)
 
