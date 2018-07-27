@@ -332,13 +332,13 @@ func processAuditFile(filename string) (err error) {
 			stats.notPubIP++
 		} else {
 			stats.pubIP++
-			node.cnt++
+			node.Cnt++
 		}
 
 	}
 	node, ok := ippool.getIPNode(ip2int(net.IPv4(81, 20, 244, 123)))
 	if ok {
-		fmt.Println("FOUND, name:", node.Name, ", addr:", node.addr, ", counter:", node.cnt)
+		fmt.Println("FOUND, name:", node.Name, ", addr:", node.Addr, ", counter:", node.Cnt)
 	} else {
 		fmt.Println("NOT, FOUND")
 	}

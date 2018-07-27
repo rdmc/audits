@@ -17,27 +17,27 @@ type IP = uint32
 
 type IPNode struct {
 	Name  string
-	addr  net.IP
-	cnt   int
-	cargo [256]byte // lastro para teste
+	Addr  net.IP
+	Cnt   int
+	Cargo [256]byte // lastro para teste
 }
 
 type Block1K struct {
-	network IP
+	Network IP
 	A       [1024]IPNode
 }
 
 type IPPool struct {
 	//m     map[net.IP]*Block1K // net.IP canot be a key in a map... use a string or a UINT
 	M     map[IP]*Block1K
-	cargo []byte
+	Cargo []byte
 }
 
 func NewBlock1K(net IP) *Block1K {
-	b := &Block1K{network: net}
+	b := &Block1K{Network: net}
 	for i := 0; i < 1024; i++ {
-		b.A[i].addr = int2ip(uint32(net) + uint32(i))
-		b.A[i].Name = fmt.Sprintf("ip=%v, index=%d", int2ip(uint32(net)+uint32(i)), i)
+		b.A[i].Addr = int2ip(uint32(net) + uint32(i))
+		b.A[i].Name = fmt.Sprintf("ip=%v", int2ip(uint32(net)+uint32(i)))
 	}
 	return b
 }
