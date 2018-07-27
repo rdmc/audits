@@ -16,7 +16,7 @@ type IP = uint32
 //type IP uint32 // ipv4 as a 32bit unsigned int
 
 type IPNode struct {
-	name  string
+	Name  string
 	addr  net.IP
 	cnt   int
 	cargo [256]byte // lastro para teste
@@ -24,20 +24,20 @@ type IPNode struct {
 
 type Block1K struct {
 	network IP
-	a       [1024]IPNode
+	A       [1024]IPNode
 }
 
 type IPPool struct {
 	//m     map[net.IP]*Block1K // net.IP canot be a key in a map... use a string or a UINT
-	m     map[IP]*Block1K
+	M     map[IP]*Block1K
 	cargo []byte
 }
 
 func NewBlock1K(net IP) *Block1K {
 	b := &Block1K{network: net}
 	for i := 0; i < 1024; i++ {
-		b.a[i].addr = int2ip(uint32(net) + uint32(i))
-		b.a[i].name = fmt.Sprintf("ip=%v, index=%d", int2ip(uint32(net)+uint32(i)), i)
+		b.A[i].addr = int2ip(uint32(net) + uint32(i))
+		b.A[i].Name = fmt.Sprintf("ip=%v, index=%d", int2ip(uint32(net)+uint32(i)), i)
 	}
 	return b
 }
@@ -55,7 +55,7 @@ func SaveIPPool() error {
 
 	enc := gob.NewEncoder(f)
 
-	if err := enc.Encode(&ippool); err != nil {
+	if err := enc.Encode(ippool); err != nil {
 		log.Fatal("Error encoding", err)
 	}
 
@@ -77,18 +77,16 @@ func ReadIPPool() error {
 	}
 
 	return nil
-
-	return nil
 }
 
 func (ipp *IPPool) getIPNode(ip IP) (*IPNode, bool) {
 	base := ip & 0xfffffc00
 	index := ip & 0x000003ff
-	b1Kp, ok := ipp.m[base]
+	b1Kp, ok := ipp.M[base]
 	if !ok {
 		return nil, false
 	}
-	return &b1Kp.a[index], true
+	return &b1Kp.A[index], true
 }
 
 // helper functions
@@ -118,15 +116,15 @@ func generate1KNetworks(cidrNet string) {
 	}
 	for i := 0; i < 1<<uint(ms); i++ {
 		b := NewBlock1K(IP(ip2int(ipv4Net.IP)))
-		ippoll.m[IP(ip2int(ipv4Net.IP))] = b
+		ippool.M[IP(ip2int(ipv4Net.IP))] = b
 		fmt.Println("#", i, ", net:", ipv4Net.IP, "/22.")
 		ipv4Net.IP[2] = ipv4Net.IP[2] + 4
 	}
 }
 
-func init() {
+func initIPPoll() {
 	fmt.Println("Initializing IP Pool memory...")
-	ippo0l.m = make(map[IP]*Block1K, 30)
+	ippool.M = make(map[IP]*Block1K, 30)
 	generate1KNetworks("81.20.240.0/20")
 	generate1KNetworks("78.29.128.0/18")
 	generate1KNetworks("128.65.224.0/19")
