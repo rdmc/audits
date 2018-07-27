@@ -30,39 +30,39 @@ interfaceID
 // AuditRecord represents a logged dhcp operation.
 // from Incognito BCC 6.x
 type AuditRecord struct {
-	StartTime          time.Time
-	EndTime            time.Time
-	DeltaTime          time.Duration
-	IPAddress          net.IP
-	Gateway            net.IP
-	HWAddress          mac.MAC
-	ClientID           string
-	Action             string // uint8
-	HostSent           string
-	HostReceived       string
-	ADNSUpdate         string // uint8 or bool
-	Protocol           string // uint8
-	CircuitID          string
-	RemoteID           mac.MAC
-	VendorClassID      string // uint8
-	DOCSISDeviceClass  string
-	VendorSpecificData string
-	InterfaceID        string
+	StartTime    time.Time
+	EndTime      time.Time
+	DeltaTime    time.Duration
+	IPAddress    net.IP
+	Gateway      net.IP
+	HWAddress    mac.MAC
+	ClientID     string
+	Action       string // uint8	// TDO: Create a map[string]int (unit8)
+	HostSent     string
+	HostReceived string
+	//	ADNSUpdate         string // uint8 or bool	// NC
+	//	Protocol           string // uint8		// NC allways "DHCPV4"
+	CircuitID     string
+	RemoteID      mac.MAC
+	VendorClassID string // uint8		// NC
+	//	DOCSISDeviceClass  string // NC
+	//	VendorSpecificData string // NC
+	//	InterfaceID        string // NC
 }
 
 //Global var stats, MUST reformat later
 var stats struct {
-	header        int
-	action        map[string]int
-	aDNSUpdate    map[string]int
-	protocol      map[string]int
-	vendorClassID map[string]int
-	interfaceID   map[string]int
-	ipClassifier  map[string]int
-	errors        int
-	cnt           int
-	pubIP         int
-	notPubIP      int
+	header int
+	action map[string]int
+	//	aDNSUpdate    map[string]int
+	//	protocol      map[string]int
+	//	vendorClassID map[string]int
+	//	interfaceID   map[string]int
+	ipClassifier map[string]int
+	errors       int
+	cnt          int
+	pubIP        int
+	notPubIP     int
 }
 
 type state int
@@ -87,10 +87,10 @@ const (
 
 func init() {
 	stats.action = make(map[string]int)
-	stats.aDNSUpdate = make(map[string]int)
-	stats.protocol = make(map[string]int)
-	stats.vendorClassID = make(map[string]int)
-	stats.interfaceID = make(map[string]int)
+	//	stats.aDNSUpdate = make(map[string]int)
+	//	stats.protocol = make(map[string]int)
+	//	stats.vendorClassID = make(map[string]int)
+	//	stats.interfaceID = make(map[string]int)
 	stats.ipClassifier = make(map[string]int)
 	stats.header = 0
 	stats.errors = 0
@@ -110,27 +110,26 @@ func PrintStats() {
 	for k, v := range stats.action {
 		fmt.Printf("\t%q = %d\n", k, v)
 	}
+	/*
+		fmt.Println("aDNSUpdate:", len(stats.aDNSUpdate))
+		for k, v := range stats.aDNSUpdate {
+			fmt.Printf("\t%q = %d\n", k, v)
+		}
+		fmt.Println("protocol:", len(stats.protocol))
+		for k, v := range stats.protocol {
+			fmt.Printf("\t%q = %d\n", k, v)
+		}
 
-	fmt.Println("aDNSUpdate:", len(stats.aDNSUpdate))
-	for k, v := range stats.aDNSUpdate {
-		fmt.Printf("\t%q = %d\n", k, v)
-	}
+		fmt.Println("vendorClassId:", len(stats.vendorClassID))
+		for k, v := range stats.vendorClassID {
+			fmt.Printf("\t%q = %d\n", k, v)
+		}
 
-	fmt.Println("protocol:", len(stats.protocol))
-	for k, v := range stats.protocol {
-		fmt.Printf("\t%q = %d\n", k, v)
-	}
-
-	fmt.Println("vendorClassId:", len(stats.vendorClassID))
-	for k, v := range stats.vendorClassID {
-		fmt.Printf("\t%q = %d\n", k, v)
-	}
-
-	fmt.Println("InterfaceID:", len(stats.interfaceID))
-	for k, v := range stats.interfaceID {
-		fmt.Printf("\t%q = %d\n", k, v)
-	}
-
+		fmt.Println("InterfaceID:", len(stats.interfaceID))
+		for k, v := range stats.interfaceID {
+			fmt.Printf("\t%q = %d\n", k, v)
+		}
+	*/
 	fmt.Println("ip classifier:", len(stats.ipClassifier))
 	for k, v := range stats.ipClassifier {
 		fmt.Printf("\t%q = %d\n", k, v)
@@ -148,14 +147,14 @@ func (a *AuditRecord) String() string {
 	s += ", Action: " + a.Action
 	s += ", HostSent: " + a.HostSent
 	s += ", HostReceived: " + a.HostReceived
-	s += ", ADNSUpdate: " + a.ADNSUpdate
-	s += ", Protocol: " + a.Protocol
+	//s += ", ADNSUpdate: " + a.ADNSUpdate
+	//s += ", Protocol: " + a.Protocol
 	s += ", CircuitID: " + a.CircuitID
 	s += ", RemoteID: " + a.RemoteID.CiscoString()
 	s += ", VendorClassID: " + a.VendorClassID
-	s += ", DOCSISDeviceClass: " + a.DOCSISDeviceClass
-	s += ", VendorSpecificData: " + a.VendorSpecificData
-	s += ", InterfaceID: " + a.InterfaceID
+	//s += ", DOCSISDeviceClass: " + a.DOCSISDeviceClass
+	//s += ", VendorSpecificData: " + a.VendorSpecificData
+	//s += ", InterfaceID: " + a.InterfaceID
 
 	return strings.Replace(s, ",", "\n", -1)
 }
@@ -216,10 +215,10 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 	stats.action[a.Action]++
 	a.HostSent = r[7]
 	a.HostReceived = r[8]
-	a.ADNSUpdate = r[9]
-	stats.action[a.ADNSUpdate]++
-	a.Protocol = r[10]
-	stats.protocol[a.Protocol]++
+	//a.ADNSUpdate = r[9]
+	//stats.action[a.ADNSUpdate]++
+	//a.Protocol = r[10]
+	//stats.protocol[a.Protocol]++
 	a.CircuitID = r[11]
 
 	rid := r[12] //RemoteID
@@ -243,17 +242,17 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 		log.Println("[RemoteID]error", err)
 		stats.errors++
 	}
+	/*
+		if i := strings.Index(r[13], ":"); i > 0 {
+			a.VendorClassID = r[13][:i]
+			stats.vendorClassID[a.VendorClassID]++
+		}
 
-	if i := strings.Index(r[13], ":"); i > 0 {
-		a.VendorClassID = r[13][:i]
-		stats.vendorClassID[a.VendorClassID]++
-	}
-
-	a.DOCSISDeviceClass = fmt.Sprintf("%0.32s", r[14])
-	a.VendorSpecificData = fmt.Sprintf("%0.32s", r[15])
-	a.InterfaceID = r[16]
-	stats.vendorClassID[a.InterfaceID]++
-
+		a.DOCSISDeviceClass = fmt.Sprintf("%0.32s", r[14])
+		a.VendorSpecificData = fmt.Sprintf("%0.32s", r[15])
+		a.InterfaceID = r[16]
+		stats.vendorClassID[a.InterfaceID]++
+	*/
 	return a, nil
 }
 
@@ -328,7 +327,7 @@ func processAuditFile(filename string) (err error) {
 		}
 
 		ip := ip2int(ar.IPAddress)
-		node, ok := ippoll.getIPNode(ip)
+		node, ok := ippool.getIPNode(ip)
 		if !ok {
 			stats.notPubIP++
 		} else {
@@ -337,9 +336,9 @@ func processAuditFile(filename string) (err error) {
 		}
 
 	}
-	node, ok := ippoll.getIPNode(ip2int(net.IPv4(81, 20, 244, 123)))
+	node, ok := ippool.getIPNode(ip2int(net.IPv4(81, 20, 244, 123)))
 	if ok {
-		fmt.Println("FOUND, name:", node.name, ", addr:", node.addr, ", counter:", node.cnt)
+		fmt.Println("FOUND, name:", node.Name, ", addr:", node.addr, ", counter:", node.cnt)
 	} else {
 		fmt.Println("NOT, FOUND")
 	}
