@@ -19,14 +19,6 @@ import (
 
 // header "Start Time" .....
 
-/*
-action
-protocol
-remoteID
-vendorClassID
-interfaceID
-*/
-
 // AuditRecord represents a logged dhcp operation.
 // from Incognito BCC 6.x
 type AuditRecord struct {
@@ -40,29 +32,8 @@ type AuditRecord struct {
 	Action       string // uint8	// TDO: Create a map[string]int (unit8)
 	HostSent     string
 	HostReceived string
-	//	ADNSUpdate         string // uint8 or bool	// NC
-	//	Protocol           string // uint8		// NC allways "DHCPV4"
-	CircuitID     string
-	RemoteID      mac.MAC
-	VendorClassID string // uint8		// NC
-	//	DOCSISDeviceClass  string // NC
-	//	VendorSpecificData string // NC
-	//	InterfaceID        string // NC
-}
-
-//Global var stats, MUST reformat later
-var stats struct {
-	header int
-	action map[string]int
-	//	aDNSUpdate    map[string]int
-	//	protocol      map[string]int
-	//	vendorClassID map[string]int
-	//	interfaceID   map[string]int
-	ipClassifier map[string]int
-	errors       int
-	cnt          int
-	pubIP        int
-	notPubIP     int
+	CircuitID    string
+	RemoteID     mac.MAC
 }
 
 type state int
@@ -85,58 +56,11 @@ const (
 	headerMark = "Start Time" // if first field is "Start Time", the line is the header of the file
 )
 
-func init() {
-	stats.action = make(map[string]int)
-	//	stats.aDNSUpdate = make(map[string]int)
-	//	stats.protocol = make(map[string]int)
-	//	stats.vendorClassID = make(map[string]int)
-	//	stats.interfaceID = make(map[string]int)
-	stats.ipClassifier = make(map[string]int)
-	stats.header = 0
-	stats.errors = 0
-	stats.cnt = 0
-}
-
-// PrintStats will print stats...
-func PrintStats() {
-	fmt.Println("conter: ", stats.cnt)
-	fmt.Println("header: ", stats.header)
-	fmt.Println("errors: ", stats.errors)
-	//
-	fmt.Println("pub ip: ", stats.pubIP)
-	fmt.Println("private ip: ", stats.notPubIP)
-
-	fmt.Println("action:", len(stats.action))
-	for k, v := range stats.action {
-		fmt.Printf("\t%q = %d\n", k, v)
-	}
-	/*
-		fmt.Println("aDNSUpdate:", len(stats.aDNSUpdate))
-		for k, v := range stats.aDNSUpdate {
-			fmt.Printf("\t%q = %d\n", k, v)
-		}
-		fmt.Println("protocol:", len(stats.protocol))
-		for k, v := range stats.protocol {
-			fmt.Printf("\t%q = %d\n", k, v)
-		}
-
-		fmt.Println("vendorClassId:", len(stats.vendorClassID))
-		for k, v := range stats.vendorClassID {
-			fmt.Printf("\t%q = %d\n", k, v)
-		}
-
-		fmt.Println("InterfaceID:", len(stats.interfaceID))
-		for k, v := range stats.interfaceID {
-			fmt.Printf("\t%q = %d\n", k, v)
-		}
-	*/
-	fmt.Println("ip classifier:", len(stats.ipClassifier))
-	for k, v := range stats.ipClassifier {
-		fmt.Printf("\t%q = %d\n", k, v)
-	}
-}
-
 func (a *AuditRecord) String() string {
+	// TODO: use strings.Builder:
+	// 	var b strings.Builder
+	//      b.WriteString(" StartTime: " + a.StartTime.String())
+	//      .....
 	s := " StartTime: " + a.StartTime.String()
 	s += ", EndTime: " + a.EndTime.String()
 	s += ", DeltaTime: " + a.DeltaTime.String()
@@ -147,14 +71,9 @@ func (a *AuditRecord) String() string {
 	s += ", Action: " + a.Action
 	s += ", HostSent: " + a.HostSent
 	s += ", HostReceived: " + a.HostReceived
-	//s += ", ADNSUpdate: " + a.ADNSUpdate
-	//s += ", Protocol: " + a.Protocol
 	s += ", CircuitID: " + a.CircuitID
 	s += ", RemoteID: " + a.RemoteID.CiscoString()
 	s += ", VendorClassID: " + a.VendorClassID
-	//s += ", DOCSISDeviceClass: " + a.DOCSISDeviceClass
-	//s += ", VendorSpecificData: " + a.VendorSpecificData
-	//s += ", InterfaceID: " + a.InterfaceID
 
 	return strings.Replace(s, ",", "\n", -1)
 }
@@ -215,10 +134,6 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 	stats.action[a.Action]++
 	a.HostSent = r[7]
 	a.HostReceived = r[8]
-	//a.ADNSUpdate = r[9]
-	//stats.action[a.ADNSUpdate]++
-	//a.Protocol = r[10]
-	//stats.protocol[a.Protocol]++
 	a.CircuitID = r[11]
 
 	rid := r[12] //RemoteID
@@ -230,6 +145,7 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 		rid = fmt.Sprintf("%x", rid)
 	}
 
+	// handle ftth account ids
 	if len(rid) == 10 && rid[0] == 'A' {
 		// in FTTH,  Remote ID = ONT circuit (acount ID), prefixed with "AA":
 		// 	   e.g. "A000123456" becames "AA:A0:00:12:34:56"
@@ -242,17 +158,6 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 		log.Println("[RemoteID]error", err)
 		stats.errors++
 	}
-	/*
-		if i := strings.Index(r[13], ":"); i > 0 {
-			a.VendorClassID = r[13][:i]
-			stats.vendorClassID[a.VendorClassID]++
-		}
-
-		a.DOCSISDeviceClass = fmt.Sprintf("%0.32s", r[14])
-		a.VendorSpecificData = fmt.Sprintf("%0.32s", r[15])
-		a.InterfaceID = r[16]
-		stats.vendorClassID[a.InterfaceID]++
-	*/
 	return a, nil
 }
 
@@ -326,16 +231,9 @@ func processAuditFile(filename string) (err error) {
 			continue
 		}
 
-		ip := ip2int(ar.IPAddress)
-		node, ok := ippool.getIPNode(ip)
-		if !ok {
-			stats.notPubIP++
-		} else {
-			stats.pubIP++
-			node.Cnt++
-		}
-
+		WorkFunc(ar)
 	}
+
 	node, ok := ippool.getIPNode(ip2int(net.IPv4(81, 20, 244, 123)))
 	if ok {
 		fmt.Println("FOUND, name:", node.Name, ", addr:", node.Addr, ", counter:", node.Cnt)
@@ -348,7 +246,37 @@ func processAuditFile(filename string) (err error) {
 	return r.s.Err() // Scanner.err()
 }
 
+func WorkFunc(ar *AuditRecord) error {
+
+	ip := ip2int(ar.IPAddress)
+	node, ok := ippool.getIPNode(ip)
+	if !ok {
+		stats.notPubIP++
+		return fmt.Errorf("IP address %s is not in ower pool %s", ip)
+	}
+
+	stats.pubIP++
+	node.Cnt++
+
+	if node.AR.StartTime.IsZero() {
+		node.AR.StartTime = ar.StartTime
+	} else {
+
+		node.AR.EndTime
+		node.AR.StartTime
+	}
+
+	return nil
+}
+
 func (r *AuditFileReader) splitAuditRecordFields() (rec []string, err error) {
+
+	type faState int //finit automaton states
+	const (
+		fieldStart state = iota
+		fieldCore
+		fieldEnd
+	)
 
 	// Read line
 	r.buf = r.s.Bytes()
@@ -401,15 +329,7 @@ func (r *AuditFileReader) splitAuditRecordFields() (rec []string, err error) {
 		return nil, err
 	}
 
-	//var rec []string
-	/*	li := 1
-		for _, v := range r.fieldIndexes {
-			field := string(r.buf[li:v])
-			li = v + 3
-			rec = append(rec, field)
-		}
-	*/
-	//var rec []string
+	// Build a []string record
 	li := 1
 	for i, v := range r.fieldIndexes {
 		r.fields[i] = string(r.buf[li:v])
