@@ -16,10 +16,11 @@ type IP = uint32
 //type IP uint32 // ipv4 as a 32bit unsigned int
 
 type IPNode struct {
-	Name  string
-	Addr  net.IP
-	Cnt   int
-	Cargo [256]byte // lastro para teste
+	Name   string
+	Addr   net.IP
+	Cnt    int
+	CntOut int
+	AR     AuditRecord
 }
 
 type Block1K struct {
