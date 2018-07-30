@@ -21,6 +21,8 @@ type IPNode struct {
 	Cnt    int
 	CntOut int
 	AR     AuditRecord
+	FIR    FocaISPRec
+	Status int // 0 = new, .....
 }
 
 type Block1K struct {

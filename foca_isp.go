@@ -33,10 +33,17 @@ type FocaISPRec struct {
 }
 
 func (f *FocaISPRec) String() string {
-	const FocaISOLineFmt = "7,%s,,,,,,%d,1,,,,,ISP,,%03d%03d%03d%03d,%s,"
+
+	const FocaISPLineFmt = "7,%s,,,,,,%d,1,,,,,ISP,,%03d%03d%03d%03d,%s,"
+
 	t := f.IPAddress.To4() // ensure IP is a 4 byte array
-	return fmt.Sprintf(FocaISOLineFmt, f.StartTime.Format("20060102150405"), f.Duration,
+
+	return fmt.Sprintf(FocaISPLineFmt, f.StartTime.Format("20060102150405"), f.Duration,
 		t[0], t[1], t[2], t[3], f.MACAddress)
+}
+
+func writeFocaISP(f *FocaISPRec) {
+
 }
 
 // TODO:

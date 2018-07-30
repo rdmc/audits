@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,27 +23,16 @@ import (
 // AuditRecord represents a logged dhcp operation.
 // from Incognito BCC 6.x
 type AuditRecord struct {
-	StartTime    time.Time
-	EndTime      time.Time
-	DeltaTime    time.Duration
-	IPAddress    net.IP
-	Gateway      net.IP
-	HWAddress    mac.MAC
-	ClientID     string
-	Action       string // uint8	// TDO: Create a map[string]int (unit8)
-	HostSent     string
-	HostReceived string
-	CircuitID    string
-	RemoteID     mac.MAC
+	StartTime time.Time
+	EndTime   time.Time
+	DeltaTime uint //time.Duration
+	IPAddress net.IP
+	Gateway   net.IP
+	HWAddress mac.MAC
+	Action    AuditAction // 	int or uint8, uint32? what is more eficient?
+	CircuitID string      // can be usefull in FTTH
+	RemoteID  mac.MAC     // CM MAC in HFC, Acouint ID in FTTH
 }
-
-type state int
-
-const (
-	fieldStart state = iota
-	fieldCore
-	fieldEnd
-)
 
 // Some "usefull" constants to stop warnings....
 const (
@@ -56,6 +46,32 @@ const (
 	headerMark = "Start Time" // if first field is "Start Time", the line is the header of the file
 )
 
+type AuditAction int
+
+const (
+	AA_NULL AuditAction = iota
+	AA_RENEW
+	AA_DELETE
+	AA_NAK
+	AA_TIMEOUT
+	AA_TEMP
+	AA_BIND
+)
+
+// dhcpAction, dhcp messages and states
+var dhcpActionMap = map[string]AuditAction{
+	"Renewal":                    AA_RENEW,
+	"Released":                   AA_DELETE,
+	"Denied: No Match":           AA_NAK,
+	"Lease Expired":              AA_TIMEOUT,
+	"NAK:Not Renewable":          AA_NAK,
+	"NAK:No Record of the lease": AA_NAK,
+	"Offered":                    AA_TEMP,
+	"Active":                     AA_BIND,
+	"Forced":                     AA_BIND,
+	"Offer expired":              AA_TIMEOUT,
+}
+
 func (a *AuditRecord) String() string {
 	// TODO: use strings.Builder:
 	// 	var b strings.Builder
@@ -63,25 +79,25 @@ func (a *AuditRecord) String() string {
 	//      .....
 	s := " StartTime: " + a.StartTime.String()
 	s += ", EndTime: " + a.EndTime.String()
-	s += ", DeltaTime: " + a.DeltaTime.String()
+	s += ", DeltaTime: " + strconv.Itoa(int(a.DeltaTime))
 	s += ", IPAddress: " + a.IPAddress.String()
 	s += ", Gateway: " + a.Gateway.String()
 	s += ", HWAddress: " + a.HWAddress.CiscoString()
-	s += ", ClientID: " + a.ClientID
-	s += ", Action: " + a.Action
-	s += ", HostSent: " + a.HostSent
-	s += ", HostReceived: " + a.HostReceived
+	s += ", Action: " + strconv.Itoa(int(a.Action))
 	s += ", CircuitID: " + a.CircuitID
 	s += ", RemoteID: " + a.RemoteID.CiscoString()
-	s += ", VendorClassID: " + a.VendorClassID
 
-	return strings.Replace(s, ",", "\n", -1)
+	//return strings.Replace(s, ",", "\n", -1)
+	return s
 }
 
 // ParseAuditRecord make a Audit struct from an a slice of strings
 func ParseAuditRecord(r []string) (*AuditRecord, error) {
 	const timeFormat = "Mon Jan 2 15:04:05 2006"
-	var err error
+	var (
+		err error
+		ok  bool
+	)
 
 	a := &AuditRecord{}
 
@@ -92,7 +108,7 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 
 	if r[0] == "Start Time" {
 		stats.header++
-		return nil, fmt.Errorf("Header record") // CHANGE-ME
+		return nil, ErrSkip
 	}
 
 	a.StartTime, err = time.Parse(timeFormat, r[0])
@@ -107,7 +123,7 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 		stats.errors++
 	}
 
-	a.DeltaTime = a.EndTime.Sub(a.StartTime)
+	a.DeltaTime = uint(a.EndTime.Sub(a.StartTime).Seconds())
 
 	a.IPAddress = net.ParseIP(r[2])
 	if a.IPAddress == nil {
@@ -123,17 +139,18 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 		stats.errors++
 	}
 
-	//a.HWAddress, err = mac.ParseMAC(r[4])
+	a.HWAddress, err = mac.ParseMAC(r[4])
 	if err != nil {
 		log.Println("[HWAddress] error", err)
 		stats.errors++
 	}
 
-	a.ClientID = r[5]
-	a.Action = r[6]
+	a.Action, ok = dhcpActionMap[r[6]]
+	if !ok {
+		log.Println("Unknow Action:", r[6])
+	}
 	stats.action[a.Action]++
-	a.HostSent = r[7]
-	a.HostReceived = r[8]
+
 	a.CircuitID = r[11]
 
 	rid := r[12] //RemoteID
@@ -180,6 +197,7 @@ func (e *ParseError) Error() string {
 var (
 	ErrQuote      = errors.New("expected a \"")
 	ErrFieldCount = errors.New("wrong number of fields")
+	ErrSkip       = errors.New("skip to next record") // not an error
 	//ErrFieldCount = errors.New("wrong number of fields")
 )
 
@@ -227,6 +245,10 @@ func processAuditFile(filename string) (err error) {
 		}
 		ar, err := ParseAuditRecord(rec)
 		if err != nil {
+			if err.Error() == ErrSkip.Error() {
+				// not an error
+				continue
+			}
 			log.Println("ERROR:", err)
 			continue
 		}
@@ -234,12 +256,6 @@ func processAuditFile(filename string) (err error) {
 		WorkFunc(ar)
 	}
 
-	node, ok := ippool.getIPNode(ip2int(net.IPv4(81, 20, 244, 123)))
-	if ok {
-		fmt.Println("FOUND, name:", node.Name, ", addr:", node.Addr, ", counter:", node.Cnt)
-	} else {
-		fmt.Println("NOT, FOUND")
-	}
 	fmt.Println("==================")
 	fmt.Println("lin: ", r.linesCnt, ", err:", r.errors)
 
@@ -248,22 +264,45 @@ func processAuditFile(filename string) (err error) {
 
 func WorkFunc(ar *AuditRecord) error {
 
+	var foca FocaISPRec
+
 	ip := ip2int(ar.IPAddress)
 	node, ok := ippool.getIPNode(ip)
 	if !ok {
 		stats.notPubIP++
-		return fmt.Errorf("IP address %s is not in ower pool %s", ip)
+		return fmt.Errorf("IP address %d is not in ower pool", ip)
 	}
 
 	stats.pubIP++
 	node.Cnt++
 
-	if node.AR.StartTime.IsZero() {
-		node.AR.StartTime = ar.StartTime
-	} else {
+	if node.Status == 0 { // empty node pool
+		fmt.Println("new node:", ar.String())
+		node.FIR.IPAddress = ar.IPAddress
+		node.FIR.MACAddress = ar.HWAddress
+		node.FIR.StartTime = ar.StartTime
+		node.FIR.Duration = 0
 
-		node.AR.EndTime
-		node.AR.StartTime
+		node.Status = 1
+
+		return nil
+	}
+
+	if ar.Action == AA_RENEW || ar.Action == AA_BIND {
+		if ar.HWAddress.String() != node.FIR.MACAddress.String() {
+			fmt.Println("ERROR: diferente MAC Addrsses  for a renew operation....")
+			fmt.Print("\tIP ar=", ar.IPAddress, ", node=", node.FIR.IPAddress, "ar.action=", ar.Action)
+			fmt.Println(", MAC ar=", ar.HWAddress.String(), ", node=", node.FIR.MACAddress.String())
+
+		}
+		if ar.StartTime.Sub(node.FIR.StartTime) > time.Hour*8 {
+			// new foca
+			foca = FocaISPRec{IPAddress: ar.IPAddress, MACAddress: ar.HWAddress,
+				StartTime: node.FIR.StartTime, Duration: uint32(ar.StartTime.Sub(node.FIR.StartTime).Seconds())}
+			node.FIR.StartTime = ar.StartTime
+
+			fmt.Println("FOCA:\t", foca.String())
+		}
 	}
 
 	return nil
@@ -273,7 +312,7 @@ func (r *AuditFileReader) splitAuditRecordFields() (rec []string, err error) {
 
 	type faState int //finit automaton states
 	const (
-		fieldStart state = iota
+		fieldStart faState = iota
 		fieldCore
 		fieldEnd
 	)
@@ -302,7 +341,7 @@ func (r *AuditFileReader) splitAuditRecordFields() (rec []string, err error) {
 			if c == comma {
 				state = fieldStart
 			} else {
-				// backtrack, to handle a '"' in the midle of a field.
+				// backtrack, to handle a '"' at midle of a field.
 				state = fieldCore
 				fieldCnt--
 			}
