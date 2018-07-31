@@ -53,9 +53,10 @@ const (
 	AA_RENEW
 	AA_DELETE
 	AA_NAK
-	AA_TIMEOUT
-	AA_TEMP
+	//AA_TIMEOUT
+	//AA_TEMP
 	AA_BIND
+	AA_IGNORE
 )
 
 // dhcpAction, dhcp messages and states
@@ -63,13 +64,13 @@ var dhcpActionMap = map[string]AuditAction{
 	"Renewal":                    AA_RENEW,
 	"Released":                   AA_DELETE,
 	"Denied: No Match":           AA_NAK,
-	"Lease Expired":              AA_TIMEOUT,
+	"Lease Expired":              AA_IGNORE,
 	"NAK:Not Renewable":          AA_NAK,
 	"NAK:No Record of the lease": AA_NAK,
-	"Offered":                    AA_TEMP,
+	"Offered":                    AA_IGNORE,
 	"Active":                     AA_BIND,
 	"Forced":                     AA_BIND,
-	"Offer expired":              AA_TIMEOUT,
+	"Offer expired":              AA_IGNORE,
 }
 
 func (a *AuditRecord) String() string {
@@ -260,52 +261,6 @@ func processAuditFile(filename string) (err error) {
 	fmt.Println("lin: ", r.linesCnt, ", err:", r.errors)
 
 	return r.s.Err() // Scanner.err()
-}
-
-func WorkFunc(ar *AuditRecord) error {
-
-	var foca FocaISPRec
-
-	ip := ip2int(ar.IPAddress)
-	node, ok := ippool.getIPNode(ip)
-	if !ok {
-		stats.notPubIP++
-		return fmt.Errorf("IP address %d is not in ower pool", ip)
-	}
-
-	stats.pubIP++
-	node.Cnt++
-
-	if node.Status == 0 { // empty node pool
-		fmt.Println("new node:", ar.String())
-		node.FIR.IPAddress = ar.IPAddress
-		node.FIR.MACAddress = ar.HWAddress
-		node.FIR.StartTime = ar.StartTime
-		node.FIR.Duration = 0
-
-		node.Status = 1
-
-		return nil
-	}
-
-	if ar.Action == AA_RENEW || ar.Action == AA_BIND {
-		if ar.HWAddress.String() != node.FIR.MACAddress.String() {
-			fmt.Println("ERROR: diferente MAC Addrsses  for a renew operation....")
-			fmt.Print("\tIP ar=", ar.IPAddress, ", node=", node.FIR.IPAddress, "ar.action=", ar.Action)
-			fmt.Println(", MAC ar=", ar.HWAddress.String(), ", node=", node.FIR.MACAddress.String())
-
-		}
-		if ar.StartTime.Sub(node.FIR.StartTime) > time.Hour*8 {
-			// new foca
-			foca = FocaISPRec{IPAddress: ar.IPAddress, MACAddress: ar.HWAddress,
-				StartTime: node.FIR.StartTime, Duration: uint32(ar.StartTime.Sub(node.FIR.StartTime).Seconds())}
-			node.FIR.StartTime = ar.StartTime
-
-			fmt.Println("FOCA:\t", foca.String())
-		}
-	}
-
-	return nil
 }
 
 func (r *AuditFileReader) splitAuditRecordFields() (rec []string, err error) {

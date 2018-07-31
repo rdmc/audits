@@ -92,6 +92,19 @@ func (ipp *IPPool) getIPNode(ip IP) (*IPNode, bool) {
 	return &b1Kp.A[index], true
 }
 
+type WalkFn func(node *IPNode)
+
+// WalkAll - Traversal all structure apling func fn to each node
+func (ipp *IPPool) WalkAll(walkFn WalkFn) error {
+	for _, v := range ipp.M {
+		for i := 0; i < 1024; i++ {
+			node := &v.A[i]
+			walkFn(node)
+		}
+	}
+	return nil
+}
+
 // helper functions
 func ip2int(ip net.IP) uint32 {
 	if len(ip) == 16 {
