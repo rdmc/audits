@@ -25,6 +25,8 @@ import (
 //17	00:05:ca:69:db:34 - MACAddress
 //18	IGNORE
 
+const MAXRENEW = 24 * time.Hour //
+
 type FocaISPRec struct {
 	StartTime  time.Time
 	Duration   uint32
@@ -43,7 +45,6 @@ func (f *FocaISPRec) String() string {
 }
 
 func writeFocaISP(f *FocaISPRec) {
-
 }
 
 // TODO:
@@ -69,7 +70,6 @@ func newFocaISPFileWriter(scanner *bufio.Scanner) *AuditFileReader {
 	}
 }
 
-
 func WorkFunc(ar *AuditRecord) error {
 
 	var foca FocaISPRec
@@ -85,53 +85,84 @@ func WorkFunc(ar *AuditRecord) error {
 	node.Cnt++
 
 	switch ar.Action {
-	case: AA_IGNORE:
-
-	case: AA_BIND:
-
-	case: AA_RENEW:
-
-	case: AA_NAK, AA_DELETE:
-	
-	
-
-	}
-
-
-
-	if node.Status == 0 { // empty node pool
-		fmt.Println("new node:", ar.String())
-		node.FIR.IPAddress = ar.IPAddress
-		node.FIR.MACAddress = ar.HWAddress
-		node.FIR.StartTime = ar.StartTime
-		node.FIR.Duration = 0
-
-		node.Status = 1
-
-		return nil
-	}
-
-	if ar.Action == AA_RENEW || ar.Action == AA_BIND {
-		if ar.HWAddress.String() != node.FIR.MACAddress.String() {
-			fmt.Println("ERROR: diferente MAC Addrsses  for a renew operation....")
-			fmt.Print("\tIP ar=", ar.IPAddress, ", node=", node.FIR.IPAddress, "ar.action=", ar.Action)
-			fmt.Println(", MAC ar=", ar.HWAddress.String(), ", node=", node.FIR.MACAddress.String())
-
+	case AA_IGNORE:
+		//fmt.Println("IGNORE, action=", ar.Action)
+		if node.Status == 0 {
+			// do nothing
+		} else {
+			// do nothing
 		}
-		if ar.StartTime.Sub(node.FIR.StartTime) > time.Hour*8 {
-			// new foca
+
+	case AA_BIND:
+		//fmt.Println("BIND")
+		if node.Status == 0 {
+			node.FIR.IPAddress = ar.IPAddress
+			node.FIR.MACAddress = ar.HWAddress
+			node.FIR.StartTime = ar.StartTime
+			node.FIR.Duration = 0
+			node.Status = 1
+			node.Cnt = 1
+		} else { // node already with information
 			foca = FocaISPRec{IPAddress: ar.IPAddress, MACAddress: ar.HWAddress,
 				StartTime: node.FIR.StartTime, Duration: uint32(ar.StartTime.Sub(node.FIR.StartTime).Seconds())}
+			emitFocaISP(&foca)
+			node.FIR.IPAddress = ar.IPAddress
+			node.FIR.MACAddress = ar.HWAddress
 			node.FIR.StartTime = ar.StartTime
-
-			fmt.Println("FOCA:\t", foca.String())
+			node.FIR.Duration = 0
+			node.Status = 1
+			node.Cnt = 1
+			node.Cnt++
 		}
+	case AA_RENEW:
+		//fmt.Println("RENEW")
+		if node.Status == 0 {
+			//fmt.Println("WARNING: Renew on a empty ipnode...")
+			node.FIR.IPAddress = ar.IPAddress
+			node.FIR.MACAddress = ar.HWAddress
+			node.FIR.StartTime = ar.StartTime
+			node.FIR.Duration = 0
+			node.Status = 1
+			node.Cnt = 1
+		} else {
+			if ar.HWAddress.String() != node.FIR.MACAddress.String() {
+				fmt.Println("ERROR: diferente MAC Addrsses  for a renew operation....")
+				fmt.Print("\tIP ar=", ar.IPAddress, ", node=", node.FIR.IPAddress, "ar.action=", ar.Action)
+				fmt.Println(", MAC ar=", ar.HWAddress.String(), ", node=", node.FIR.MACAddress.String())
+				return fmt.Errorf("diferent MAC Addresss dor same ip")
+			}
+			if ar.StartTime.Sub(node.FIR.StartTime) > MAXRENEW { //
+				foca = FocaISPRec{IPAddress: ar.IPAddress, MACAddress: ar.HWAddress,
+					StartTime: node.FIR.StartTime, Duration: uint32(ar.StartTime.Sub(node.FIR.StartTime).Seconds())}
+				emitFocaISP(&foca)
+				node.FIR.StartTime = ar.StartTime
+				node.Status = 1
+			}
+			node.Cnt++
+		}
+	case AA_NAK, AA_DELETE:
+		//fmt.Println("NACK/DELETE")
+		if node.Status == 0 {
+			// do nothing
+		} else {
+			foca = FocaISPRec{IPAddress: ar.IPAddress, MACAddress: ar.HWAddress,
+				StartTime: node.FIR.StartTime, Duration: uint32(ar.StartTime.Sub(node.FIR.StartTime).Seconds())}
+			emitFocaISP(&foca)
+			node.FIR.StartTime = ar.StartTime // deeria ser zero!!!
+			node.Status = 0
+		}
+	default:
+		//fmt.Println("DEFAULT, action=", ar.Action)
+
 	}
 
 	return nil
 }
 
-
+func emitFocaISP(f *FocaISPRec) {
+	//fmt.Println("FOCA:\t", f.String())
+	fmt.Println(f.String())
+}
 
 /*
 func FocaISPWriterCh(filename string, in chan FocaISPRec) error {
