@@ -24,8 +24,8 @@ import (
 // from Incognito BCC 6.x
 type AuditRecord struct {
 	StartTime time.Time
-	EndTime   time.Time
-	DeltaTime uint //time.Duration
+	//	EndTime   time.Time
+	//	DeltaTime uint //time.Duration
 	IPAddress net.IP
 	Gateway   net.IP
 	HWAddress mac.MAC
@@ -79,8 +79,8 @@ func (a *AuditRecord) String() string {
 	//      b.WriteString(" StartTime: " + a.StartTime.String())
 	//      .....
 	s := " StartTime: " + a.StartTime.String()
-	s += ", EndTime: " + a.EndTime.String()
-	s += ", DeltaTime: " + strconv.Itoa(int(a.DeltaTime))
+	//	s += ", EndTime: " + a.EndTime.String()
+	//	s += ", DeltaTime: " + strconv.Itoa(int(a.DeltaTime))
 	s += ", IPAddress: " + a.IPAddress.String()
 	s += ", Gateway: " + a.Gateway.String()
 	s += ", HWAddress: " + a.HWAddress.CiscoString()
@@ -117,15 +117,15 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 		log.Println("[StartTime]error", err)
 		stats.errors++
 	}
+	/*
+		a.EndTime, err = time.Parse(timeFormat, r[1])
+		if err != nil {
+			log.Println("[EndTime] error", err)
+			stats.errors++
+		}
 
-	a.EndTime, err = time.Parse(timeFormat, r[1])
-	if err != nil {
-		log.Println("[EndTime] error", err)
-		stats.errors++
-	}
-
-	a.DeltaTime = uint(a.EndTime.Sub(a.StartTime).Seconds())
-
+		a.DeltaTime = uint(a.EndTime.Sub(a.StartTime).Seconds())
+	*/
 	a.IPAddress = net.ParseIP(r[2])
 	if a.IPAddress == nil {
 		log.Println("[IPAddress] error parsing ip: ", r[2])
@@ -157,7 +157,7 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 	rid := r[12] //RemoteID
 
 	if len(rid) == 6 {
-		// some CM encode RemoteID as a 6 bytes string...
+		// some CMs encodes RemoteID as a 6 bytes string...
 		// "4z`***" [34:7a:2c:*], "pv0***" [70:76:30:*],  "|&4***" [7c:26:34:*]
 
 		rid = fmt.Sprintf("%x", rid)
