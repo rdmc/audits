@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	"github.com/pkg/profile"
 )
@@ -45,8 +47,11 @@ func PrintStats() {
 	}
 }
 
-func main() {
+//var fw FocaFileWriter
 
+func main() {
+	var err error
+	wc := time.Now()
 	defer profile.Start().Stop()
 	/*
 		f = FocaISPRec
@@ -64,6 +69,12 @@ func main() {
 
 		}
 	*/
+
+	fw, err = newFocaISPFile("out.txt")
+	if err != nil {
+		log.Fatal("Error creating file:", err)
+	}
+
 	for _, arg := range os.Args[1:] {
 
 		fmt.Printf("Processing file %q ...\n", arg)
@@ -71,6 +82,27 @@ func main() {
 		_ = processAuditFile(arg)
 
 	}
+
+	ippool.WalkAll(func(node *IPNode) {
+		var foca FocaISPRec
+		//fmt.Println("walk ", node.Name)
+		if node.Status == 1 {
+			foca = FocaISPRec{IPAddress: node.FIR.IPAddress, MACAddress: node.FIR.MACAddress,
+				StartTime: node.FIR.StartTime, Duration: uint32(node.LastStartTime.Sub(node.FIR.StartTime).Seconds())}
+			emitFocaISP(&foca)
+			//node.FIR.IPAddress = ar.IPAddress
+			//node.FIR.MACAddress = ar.HWAddress
+			node.FIR.StartTime = node.LastStartTime
+			node.FIR.Duration = 0
+			node.Status = 1
+			node.Cnt = 1
+			node.Cnt++
+
+		}
+	})
+
+	fmt.Println("Duration:", time.Now().Sub(wc))
+
 	PrintStats()
 	/*
 		for k, v := range ippool.M {

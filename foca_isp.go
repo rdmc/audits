@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/rdmc/mac"
@@ -25,7 +26,7 @@ import (
 //17	00:05:ca:69:db:34 - MACAddress
 //18	IGNORE
 
-const MAXRENEW = 24 * time.Hour //
+const MAXRENEW = 20*time.Hour - 10*time.Minute //
 
 type FocaISPRec struct {
 	StartTime  time.Time
@@ -50,25 +51,48 @@ func writeFocaISP(f *FocaISPRec) {
 // TODO:
 // FOCA !!!!!!
 type FocaFileWriter struct {
-	fname string
-	w     *bufio.Writer
-	buf   []byte
-
+	filename string
+	file     *os.File
+	w        *bufio.Writer
 	// stats
 	errors   int
-	headers  int
 	linesCnt int
 }
 
-func newFocaISPFileWriter(scanner *bufio.Scanner) *AuditFileReader {
-	return &AuditFileReader{
+var fw *FocaFileWriter
+
+func newFocaISPFile(fname string) (*FocaFileWriter, error) {
+
+	f, err := os.Create(fname)
+	if err != nil {
+		// flag error
+		return nil, err
+	}
+	fiw := &FocaFileWriter{
+		filename: fname,
+		file:     f,
+		//w:        f,
+	}
+
+	return fiw, nil
+
+}
+
+/*
+func newFocaISPFile(fname string) *FocaFileWriter {
+	return &FocaFileWriter{
 		//fname:        filename,
-		s:            scanner,
-		buf:          make([]byte, 1024),
-		fieldIndexes: make([]int, FieldsPerRecord, FieldsPerRecord),
-		fields:       make([]string, FieldsPerRecord, FieldsPerRecord),
+		w: w,
 	}
 }
+*/
+
+/*
+ *  for emit a new focaIspRec, id day(ar.startdate) != day(saved startdate)
+ *  if ar.starDate - saved.StartDate > max (12H, 24h ????)
+ *  run walk ate the end of a cycle, and emti all open renews....
+ *  more testing
+ */
 
 func WorkFunc(ar *AuditRecord) error {
 
@@ -92,7 +116,7 @@ func WorkFunc(ar *AuditRecord) error {
 		} else {
 			// do nothing
 		}
-
+		// increment countetrs
 	case AA_BIND:
 		//fmt.Println("BIND")
 		if node.Status == 0 {
@@ -140,6 +164,7 @@ func WorkFunc(ar *AuditRecord) error {
 			}
 			node.Cnt++
 		}
+		node.LastStartTime = ar.StartTime
 	case AA_NAK, AA_DELETE:
 		//fmt.Println("NACK/DELETE")
 		if node.Status == 0 {
@@ -161,24 +186,5 @@ func WorkFunc(ar *AuditRecord) error {
 
 func emitFocaISP(f *FocaISPRec) {
 	//fmt.Println("FOCA:\t", f.String())
-	fmt.Println(f.String())
+	fmt.Fprintln(fw.file, f.String())
 }
-
-/*
-func FocaISPWriterCh(filename string, in chan FocaISPRec) error {
-	//of, err := os.Create(filename)	// TODO: open with append
-	of, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0755)
-	if err != nil {
-		return err
-	}
-	go func() {
-
-	}()
-
-	go func() {
-		// flush
-		// close
-
-	}()
-}
-*/

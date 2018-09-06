@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
 const filename = "save.gob"
@@ -20,9 +21,11 @@ type IPNode struct {
 	Addr   net.IP
 	Cnt    int
 	CntOut int
-	AR     AuditRecord
-	FIR    FocaISPRec
-	Status int // 0 = new, .....
+	//AR     AuditRecord
+	FIR           FocaISPRec
+	LastAction    AuditAction
+	LastStartTime time.Time
+	Status        int // 0 = new, .....
 }
 
 type Block1K struct {
@@ -48,6 +51,7 @@ func NewBlock1K(net IP) *Block1K {
 // main !!!
 var ippool IPPool
 
+// SaveIPPool save the ippool structure to a gob file.
 func SaveIPPool() error {
 
 	f, err := os.Create(filename)
@@ -65,6 +69,7 @@ func SaveIPPool() error {
 	return nil
 }
 
+// ReadIPPool read the ippool structure from a gob file.
 func ReadIPPool() error {
 
 	f, err := os.Open(filename)
@@ -92,9 +97,11 @@ func (ipp *IPPool) getIPNode(ip IP) (*IPNode, bool) {
 	return &b1Kp.A[index], true
 }
 
+// WalkFn, function type to use in WalkAll function.
 type WalkFn func(node *IPNode)
 
 // WalkAll - Traversal all structure apling func fn to each node
+// synchronous version
 func (ipp *IPPool) WalkAll(walkFn WalkFn) error {
 	for _, v := range ipp.M {
 		for i := 0; i < 1024; i++ {
@@ -104,6 +111,27 @@ func (ipp *IPPool) WalkAll(walkFn WalkFn) error {
 	}
 	return nil
 }
+
+/*
+// WalkAll - Traversal all structure apling func fn to each node
+// asynchronous/parallel version
+// strangely this function version  is slower than the synchronous version...
+func (ipp *IPPool) WalkAll2(walkFn WalkFn) error {
+	var wg sync.WaitGroup
+	for _, v := range ipp.M {
+		wg.Add(1)
+		go func(a *Block1K) {
+			for i := 0; i < 1024; i++ {
+				node := &a.A[i]
+				walkFn(node)
+			}
+			wg.Done()
+		}(v)
+	}
+	wg.Wait()
+	return nil
+}
+*/
 
 // helper functions
 func ip2int(ip net.IP) uint32 {
@@ -133,7 +161,7 @@ func generate1KNetworks(cidrNet string) {
 	for i := 0; i < 1<<uint(ms); i++ {
 		b := NewBlock1K(IP(ip2int(ipv4Net.IP)))
 		ippool.M[IP(ip2int(ipv4Net.IP))] = b
-		fmt.Println("#", i, ", net:", ipv4Net.IP, "/22.")
+		//fmt.Println("net:", ipv4Net.IP, "/22. #", i)
 		ipv4Net.IP[2] = ipv4Net.IP[2] + 4
 	}
 }
