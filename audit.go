@@ -34,7 +34,7 @@ type AuditRecord struct {
 	RemoteID  mac.MAC     // CM MAC in HFC, Acouint ID in FTTH
 }
 
-// Some "usefull" constants to stop warnings....
+// Some "usefull" constants ....
 const (
 	quote           = '"'
 	comma           = ','
