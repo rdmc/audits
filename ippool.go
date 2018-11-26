@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const filename = "save.gob"
+const filename = "audit_last.gob"
 
 type IP = uint32
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"log"
@@ -229,9 +230,15 @@ func newAuditFileReader(scanner *bufio.Scanner) *AuditFileReader {
 //iterate all lines on audit file
 func processAuditFile(filename string) (err error) {
 
-	f, err := os.Open(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return err
+	}
+	defer file.Close()
+
+	f, err := gzip.NewReader(file)
+	if err != nil {
+		log.Fatal(err)
 	}
 	defer f.Close()
 
