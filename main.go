@@ -13,7 +13,7 @@ const (
 	//timeformat2 = "20060102150405"
 	dateFormat       = "20060102"
 	auditFileFormat  = "ipaudits_%4d.%02d.%02d_*"
-	searchFileFormat = "search_isp_001_%4d%02d%02d00010.gz" // day + 1??? 23:59 ??
+	searchFileFormat = "search_isp_001_%4d%02d%02d23590" // day + 1??? 23:59 ??
 	auditDir         = "/home/ricardo/work/audits/archive"
 	outputDir        = "./"
 )
@@ -91,12 +91,12 @@ func main() {
 		// PROGRAM TERMINATE
 	}
 
-	date, err := time.Parse(dateFormat, flag.Arg(0))
+	day, err := time.Parse(dateFormat, flag.Arg(0))
 	if err != nil {
 		log.Fatalf("error parsing date, %s.", err)
 	}
 
-	y, m, d := date.Date()
+	y, m, d := day.Date()
 
 	if *zeroOpt && *lastOpt {
 		log.Fatalf("Incompatible flags set, -z and -l")
@@ -115,7 +115,9 @@ func main() {
 		_ = ReadIPPool()
 	}
 
-	fw, err = newFocaISPFile("out.txt")
+	searchFile = fmt.Sprintf(searchFileFormat, y, m, d)
+	searchFile = filepath.Join(outputDir, searchFile)
+	fw, err = newFocaISPFile(searchFile)
 
 	if err != nil {
 		log.Fatal("Error creating file:", err)

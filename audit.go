@@ -174,7 +174,7 @@ func ParseAuditRecord(r []string) (*AuditRecord, error) {
 	// HFC =>, Remote ID = CM mac addr
 	a.RemoteID, err = mac.ParseMAC(rid)
 	if err != nil {
-		log.Println("[RemoteID]error", err)
+		//log.Println("[RemoteID]error", err)
 		stats.errors++
 	}
 	return a, nil
