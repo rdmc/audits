@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"compress/gzip"
 	"fmt"
 	"net"
 	"os"
@@ -53,7 +53,7 @@ func writeFocaISP(f *FocaISPRec) {
 type FocaFileWriter struct {
 	filename string
 	file     *os.File
-	w        *bufio.Writer
+	w        *gzip.Writer
 	// stats
 	errors   int
 	linesCnt int
@@ -68,10 +68,11 @@ func newFocaISPFile(fname string) (*FocaFileWriter, error) {
 		// flag error
 		return nil, err
 	}
+	w := gzip.NewWriter(f)
 	fiw := &FocaFileWriter{
 		filename: fname,
 		file:     f,
-		//w:        f,
+		w:        w,
 	}
 
 	return fiw, nil
@@ -186,5 +187,5 @@ func WorkFunc(ar *AuditRecord) error {
 
 func emitFocaISP(f *FocaISPRec) {
 	//fmt.Println("FOCA:\t", f.String())
-	fmt.Fprintln(fw.file, f.String())
+	fmt.Fprintln(fw.w, f.String())
 }

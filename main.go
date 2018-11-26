@@ -13,7 +13,7 @@ const (
 	//timeformat2 = "20060102150405"
 	dateFormat       = "20060102"
 	auditFileFormat  = "ipaudits_%4d.%02d.%02d_*"
-	searchFileFormat = "search_isp_001_%4d%02d%02d23590" // day + 1??? 23:59 ??
+	searchFileFormat = "search_isp_001_%4d%02d%02d23590.gz" // day + 1??? 23:59 ??
 	auditDir         = "/home/ricardo/work/audits/archive"
 	outputDir        = "./"
 )
@@ -154,6 +154,6 @@ func main() {
 
 	//PrintStats()
 	SaveIPPool()
-
+	fw.w.Close()
 	fw.file.Close()
 }

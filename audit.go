@@ -264,7 +264,7 @@ func processAuditFile(filename string) (err error) {
 		WorkFunc(ar)
 	}
 
-	fmt.Println("==================")
+	//fmt.Println("==================")
 	fmt.Println("lin: ", r.linesCnt, ", err:", r.errors)
 
 	return r.s.Err() // Scanner.err()
