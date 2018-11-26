@@ -72,6 +72,8 @@ var dhcpActionMap = map[string]AuditAction{
 	"Active":                     AA_BIND,
 	"Forced":                     AA_BIND,
 	"Offer expired":              AA_IGNORE,
+	"Denied: No Addresses":       AA_IGNORE,
+	"Declined":                   AA_NAK,
 }
 
 func (a *AuditRecord) String() string {

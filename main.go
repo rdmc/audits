@@ -14,14 +14,14 @@ const (
 	dateFormat       = "20060102"
 	auditFileFormat  = "ipaudits_%4d.%02d.%02d_*"
 	searchFileFormat = "search_isp_001_%4d%02d%02d23590.gz" // day + 1??? 23:59 ??
-	auditDir         = "/home/ricardo/work/audits/archive"
-	outputDir        = "./"
+	auditDir         = "/home/ricardo/audits/archive"
+	outputDir        = "/home/ricardo/audits//data"
 )
 
 var (
 	//default "load IP Pool "from audit_ippool_(day -1).gob" ....
-	zeroOpt  = flag.Bool("z", false, "Initialize IP Pool to all zeros.")
-	lastOpt  = flag.Bool("l", false, "Load IP Pool from audit_last.gob")
+	zeroOpt = flag.Bool("z", false, "Initialize IP Pool to all zeros, otherwise o read from saved.gob file.")
+	//lastOpt  = flag.Bool("l", false, "Load IP Pool from audit_last.gob")
 	closeOpt = flag.Bool("c", false, "Try to close  all cumulative opened records")
 	//note l,z,g are mutualy excluxive
 	searchFile = "search_isp_001_2018061902360.gz"
@@ -73,7 +73,7 @@ func PrintStats() {
 
 func main() {
 	var err error
-	wc := time.Now()
+	//wc := time.Now()
 	//defer profile.Start().Stop()
 	/*
 		f = FocaISPRec
@@ -85,7 +85,7 @@ func main() {
 	flag.Parse()
 
 	if flag.NArg() != 1 {
-		fmt.Println("usage of audit:\naudit [-z|-l] [-c] <YYYMMDDD>")
+		fmt.Println("usage of audit:\naudit [-z] [-c] <YYYMMDDD>")
 		flag.PrintDefaults()
 		log.Fatal("Bye, bye.")
 		// PROGRAM TERMINATE
@@ -98,12 +98,14 @@ func main() {
 
 	y, m, d := day.Date()
 
-	if *zeroOpt && *lastOpt {
-		log.Fatalf("Incompatible flags set, -z and -l")
-	}
+	//if *zeroOpt && *lastOpt {
+	//	log.Fatalf("Incompatible flags set, -z and -l")
+	//}
+
+	log.Printf("autits for day %s\t, started...\n", day.Format(dateFormat))
 
 	auditPatern := fmt.Sprintf(auditFileFormat, y, m, d)
-	fmt.Printf("files: %s\n", auditPatern)
+	//fmt.Printf("files: %s\n", auditPatern)
 	matchFiles, err := filepath.Glob(filepath.Join(auditDir, auditPatern))
 	if err != nil || len(matchFiles) == 0 {
 		log.Fatal("No audit files found or match error, in base=%s, match=%s.\n", auditDir, auditPatern)
@@ -118,14 +120,13 @@ func main() {
 	searchFile = fmt.Sprintf(searchFileFormat, y, m, d)
 	searchFile = filepath.Join(outputDir, searchFile)
 	fw, err = newFocaISPFile(searchFile)
-
 	if err != nil {
 		log.Fatal("Error creating file:", err)
 	}
 
 	for _, arg := range matchFiles {
 
-		fmt.Printf("Processing file %q ...\n", arg)
+		fmt.Printf("Processing file %q ...", filepath.Base(arg))
 		//_ = parseBccAuditFile(arg)
 		_ = processAuditFile(arg)
 
@@ -150,7 +151,7 @@ func main() {
 			}
 		})
 	}
-	fmt.Println("Duration:", time.Now().Sub(wc))
+	//fmt.Println("Duration:", time.Now().Sub(wc))
 
 	//PrintStats()
 	SaveIPPool()
