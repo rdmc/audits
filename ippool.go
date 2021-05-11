@@ -169,10 +169,15 @@ func generate1KNetworks(cidrNet string) {
 func initIPPoll() {
 	fmt.Println("Initializing IP Pool memory...")
 	ippool.M = make(map[IP]*Block1K, 30)
-	generate1KNetworks("81.20.240.0/20")
-	generate1KNetworks("78.29.128.0/18")
-	generate1KNetworks("128.65.224.0/19")
-	generate1KNetworks("185.218.12.0/22")
-	generate1KNetworks("185.224.164.0/22")
+	// generate1KNetworks("81.20.240.0/20")
+	// generate1KNetworks("81.20.240.0/20")
+	// generate1KNetworks("78.29.128.0/18")
+	// generate1KNetworks("128.65.224.0/19")
+	// generate1KNetworks("185.218.12.0/22")
+	// generate1KNetworks("185.224.164.0/22")
+	// generate1KNetworks("80.243.88.0/21")
+
+	// only one /22 for development
+	generate1KNetworks("81.20.244.0/22")
 
 }

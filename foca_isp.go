@@ -1,3 +1,5 @@
+// foca_isp.go,  a better name shuld be "foca_dhcp.go"
+
 package main
 
 import (
@@ -26,6 +28,26 @@ import (
 //17	00:05:ca:69:db:34 - MACAddress
 //18	IGNORE
 
+//11,20210511083028,20210511093030,,00:05:ca:69:db:30,,00:05:ca:69:db:30,3602,0,,,,,DHCP,,081020244002,00:05:ca:69:db:34,2,081020244002,,,,
+//# Field  		Name     	Value                   Comments
+//01  11		EventType	"11" FIXED value
+//02 20210228083015     StartTimeKey	AAAAMMDDhhmmss          start date and time
+//03 20210228084015     EndTimeKey      AAAAMMDDhhmmss          end date and time
+//04 IGNORE
+//05 aa:bb:cc:dd:ee:ff	FromNumber      aa:bb:cc:dd:ee:ff       CM MAC : if HFC(ipv4)
+//06 IGNORE
+//07 aa:bb:cc:dd:ee:ff 	PortId          aa:bb:cc:dd:ee:ff       CM MAC : if HFC(ipv4)
+//08 600     		Duration        ItoA(seconds)           Duration in seconds
+//09 0    		CallType        "0" FIXED value
+//10-13 IGNORE
+//14 DHCP    		NetworkElement   "DHCP"  FIXED value
+//15 IGNORE
+//16 081020244002    	PrivateIPAddress aaaBBBcccDDD           CM IP Private Address, [WTF-1]
+//17 MAC HGW		MACAddress       aa:bb:cc:dd:ee:ff      Home Gateway MAC Addr  [WTF-2]
+//18 2    		Parameters       "2" FIXED value 	2= HFC record
+//19 081020244002  	PublicIPAddress  aaaaBBBcccDDD		DHCP: Not Aplicable !! REALLY ??[?? WTF-3]
+//20-23 IGNORE
+
 const MAXRENEW = 20*time.Hour - 10*time.Minute //
 
 type FocaISPRec struct {
@@ -33,16 +55,26 @@ type FocaISPRec struct {
 	Duration   uint32
 	IPAddress  net.IP
 	MACAddress mac.MAC
+	//CMMAC  mac.MAC
+	//CPEMAC mac.MAC
 }
 
 func (f *FocaISPRec) String() string {
 
-	const FocaISPLineFmt = "7,%s,,,,,,%d,1,,,,,ISP,,%03d%03d%03d%03d,%s,"
+	//const FocaISPLineFmt = "7,%s,,,,,,%d,1,,,,,ISP,,%03d%03d%03d%03d,%s,"
+	const FocaDHCPLineFmt = "11,%s,%s,,%s,,%s,%d,0,,,,,DHCP,,,%s,2,%s,,,,"
 
-	t := f.IPAddress.To4() // ensure IP is a 4 byte array
+	t := f.IPAddress.To4()
+	ipStr := fmt.Sprintf("%03d%03d%03d%03d", t[0], t[1], t[2], t[3])
 
-	return fmt.Sprintf(FocaISPLineFmt, f.StartTime.Format("20060102150405"), f.Duration,
-		t[0], t[1], t[2], t[3], f.MACAddress)
+	return fmt.Sprintf(FocaDHCPLineFmt, f.StartTime.Format("20060102150405"),
+		f.StartTime.Add(time.Duration(f.Duration)*time.Second).Format("20060102150405"),
+		//f.CMMAC, f.CMMAC,
+		f.MACAddress, f.MACAddress,
+		f.Duration,
+		f.MACAddress,
+		//f.CPEMAC,
+		ipStr)
 }
 
 func writeFocaISP(f *FocaISPRec) {

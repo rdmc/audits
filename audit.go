@@ -15,8 +15,8 @@ import (
 	"github.com/rdmc/mac"
 )
 
-// "Start Time","End Time","IP Address","Gateway","HW Address","Client ID","Acti                                                                                 on",
-// "Host Sent","Host Received","A DNS Update","Protocol","Circuit ID","Remote ID                                                                                 ",
+// "Start Time","End Time","IP Address","Gateway","HW Address","Client ID","Action",
+// "Host Sent","Host Received","A DNS Update","Protocol","Circuit ID","Remote ID",
 // "Vendor Class ID","DOCSIS DeviceClass","Vendor-Specific Data","Interface ID"
 
 // header "Start Time" .....

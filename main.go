@@ -14,8 +14,12 @@ const (
 	dateFormat       = "20060102"
 	auditFileFormat  = "ipaudits_%4d.%02d.%02d_*"
 	searchFileFormat = "search_isp_001_%4d%02d%02d23590.gz" // day + 1??? 23:59 ??
-	auditDir         = "/home/ricardo/audits/archive"
-	outputDir        = "/home/ricardo/audits//data"
+	//auditDir         = "/usr/local/lib/ipcmdr/data/archive"
+	auditDir = "../archive"
+	//outputDir        = "/home/search_isp/data"
+	outputDir = "../data"
+
+	version = "FOCA 4.1, IPv4 only"
 )
 
 var (
